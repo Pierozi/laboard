@@ -50,7 +50,8 @@ var libs = [
     'bower_components/socket.io-client/socket.io.js',
     'bower_components/node-semver/semver.browser.js',
     'bower_components/highcharts/highcharts-all.js',
-    'bower_components/highcharts-ng/dist/highcharts-ng.js'
+    'bower_components/highcharts-ng/dist/highcharts-ng.js',
+    'bower_components/angular-timer/app/js/timer.js'
 ];
 gulp.task('libs:mock', function() {
     libs.push('bower_components/angular-mocks/angular-mocks.js');
