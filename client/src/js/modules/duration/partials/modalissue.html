@@ -1,0 +1,56 @@
+<div class="modal-header" class="container-fluid">
+    <div class="row">
+        <h3 class="modal-title pull-left">
+            #{{issue.iid}} - {{issue.title}}
+        </h3>
+        <div class="pull-right"><a href="#" onclick="return false;" ng-click="close();">Close</a></div>
+    </div>
+</div>
+
+<div id="modal-issue-{{issue.iid}}" class="modal-body clearfix">
+    <h3>Duration</h3>
+    <div class="container-fluid" data-ng-if="!timeStarted || (timeStarted && workerLogged)">
+        <button class="btn btn-md well-sm btn-success" data-ng-if="!timeStarted" ng-click="start();">Start Work !</button>
+        <button class="btn btn-md well-sm btn-danger" data-ng-if="timeStarted" ng-click="stop();">
+            <span>Stop work : </span>
+            <timer class="worker-countdown" start-time="timestampMsStart" data-ng-if="timeStarted" max-time-unit="'hour'">{{hhours}}<b>:</b>{{mminutes}}<b>:</b>{{sseconds}}</timer>
+        </button>
+        <button class="btn btn-lg btn-success fa fa-plus" data-ng-if="timeStarted" ng-click="timeAdd(10);"></button>
+        <button class="btn btn-lg btn-warning fa fa-minus" data-ng-if="timeStarted" ng-click="timeRm(10);"></button>
+    </div>
+
+    <div data-ng-if="timeStarted && !workerLogged" class="bg-info" style="padding: 10px;">
+        <span>In progress by </span>
+        <b>{{workerName}}</b>
+        <span> since </span>
+        <timer class="worker-countdown bold" start-time="timestampMsStart" data-ng-if="timeStarted" max-time-unit="'hour'">{{hhours}}<b>:</b>{{mminutes}}<b>:</b>{{sseconds}}</timer>
+    </div>
+
+    <br/>
+
+    <h3>History</h3>
+    <table class="table table-condensed">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Column</th>
+                <th>Start time</th>
+                <th>End time</th>
+                <th>Duration</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr data-ng-repeat="duration in history | orderBy:['-id']" data-ng-if="duration.time_stop > 0">
+                <td>{{duration.user_name}}</td>
+                <td>{{duration.tag_column}}</td>
+                <td>{{duration.time_start*1000 | date:'dd/MM/y HH:mm:ss'}}</td>
+                <td>{{duration.time_stop*1000 | date:'dd/MM/y HH:mm:ss'}}</td>
+                <td><timer autostart="false" countdown="duration.countdown" max-time-unit="'hour'">{{hhours}}<b>:</b>{{mminutes}}<b>:</b>{{sseconds}}</timer></td>
+            </tr>
+            <tr>
+                <td colspan="4" class="text-right">Total</td>
+                <td><timer autostart="false" countdown="totalTimeWorked" max-time-unit="'hour'">{{hhours}}<b>:</b>{{mminutes}}<b>:</b>{{sseconds}}</timer></td>
+            </tr>
+        </tbody>
+    </table>
+</div>

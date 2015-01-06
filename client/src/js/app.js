@@ -7,7 +7,8 @@ angular.module('laboard-frontend', [
     'authenticate.js',
     'chieffancypants.loadingBar',
     'ngDraggable',
-    'highcharts-ng'
+    'highcharts-ng',
+    'timer'
 ]);
 
 angular.module('laboard-frontend')
