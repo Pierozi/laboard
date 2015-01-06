@@ -31,8 +31,9 @@ var addColumn = function($modal, $columns) {
 
 angular.module('laboard-frontend')
     .controller('ProjectController', [
-        '$rootScope', '$scope', '$stateParams', '$state', '$modal', 'ColumnsRepository', 'ProjectsRepository', 'IssuesRepository', 'ProjectManager',
-        function($root, $scope, $params, $state, $modal, $columns, $projects, $issues, $projectManager) {
+        '$rootScope', '$scope', '$stateParams', '$state', '$modal', 'ColumnsRepository', 'ProjectsRepository', 'IssuesRepository', 'ProjectManager', 'DurationsRepository',
+        function($root, $scope, $params, $state, $modal, $columns, $projects, $issues, $projectManager, $durations) {
+
             var render = function() {
                 $projects.members($root.project)
                     .then(
@@ -52,6 +53,13 @@ angular.module('laboard-frontend')
                     .then(
                         function() {
                             $root.project.issues = $issues;
+                        }
+                    );
+
+                $durations.all()
+                    .then(
+                        function() {
+                            $root.project.durations = $durations;
                         }
                     );
             };

@@ -1,7 +1,33 @@
 angular.module('laboard-frontend')
     .controller('IssueController', [
-        '$scope', '$rootScope', 'Restangular', 'ColumnsRepository', '$modal', 'IssuesRepository', 'AuthorizationFactory',
-        function($scope, $rootScope, Restangular, ColumnsRepository, $modal, $issues, $authorization) {
+        '$scope', '$rootScope', '$filter', '$timeout', 'Restangular', 'ColumnsRepository', '$modal', 'IssuesRepository', 'AuthorizationFactory', 'DurationsRepository',
+        function($scope, $rootScope, $filter, $timeout, Restangular, ColumnsRepository, $modal, $issues, $authorization, $durations) {
+
+            $scope.workInProgress = false;
+            $scope.timestampMsStart = undefined;
+            $scope.workerName = undefined;
+
+            var updateProgressDurationTime = function() {
+                $rootScope.project.durations.all().then(function(r) {
+                    var durations = $filter('filter')(r, {"issue_id": $scope.issue.iid, "time_stop":null}, true),
+                        duration  = 0 === durations.length ? null : durations[0];
+
+                    $timeout(function() {
+
+                        $scope.workInProgress   = (null !== duration);
+                        $scope.timestampMsStart = null === duration ? undefined : parseInt(duration['time_start']) * 1000;
+                        $scope.workerName       = duration ? duration['user_name'] : 'Undefined';
+
+                        $scope.$apply();
+                    }, 200);
+                });
+            };
+
+            (function(){
+                updateProgressDurationTime();
+                $durations.on(['start', 'update'], updateProgressDurationTime, this);
+            })();
+
             $scope.close = function() {
                 $issues.close($scope.issue)
             };
@@ -50,6 +76,21 @@ angular.module('laboard-frontend')
                         $scope.issue.assignee = member;
 
                         $issues.persist($scope.issue);
+                    });
+            };
+
+            var modalDuration;
+            $scope.openDuration = function() {
+
+                modalDuration = $modal
+                    .open({
+                        templateUrl: 'duration/partials/modalissue.html',
+                        controller: 'DurationController',
+                        resolve: {
+                            issue: function () {
+                                return $scope.issue;
+                            }
+                        }
                     });
             };
 
