@@ -11,3 +11,6 @@ client/tmp
 covershot/
 karma_html/
 server-cov/
+packer/*
+.dsyncignore
+.dsynctime
