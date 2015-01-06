@@ -4,6 +4,51 @@ var gitlab = module.exports = function gitlab(url, http) {
 };
 
 gitlab.prototype = {
+    login: function(username, password, req, done) {
+        if (typeof req === 'function') {
+            done = req;
+            req = null;
+        }
+
+        this.http(
+            {
+                method: 'POST',
+                uri: this.base + '/session',
+                body: JSON.stringify({
+                    login: username,
+                    password: password
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            },
+            function(err, resp, body) {
+                if (err) {
+                    done(err);
+
+                    return;
+                }
+
+                if (resp.statusCode !== 201) {
+                    if (req) {
+                        req.res.status(resp.statusCode);
+                    }
+
+                    try {
+                        done(JSON.parse(body));
+                    } catch(e) {
+                        done({
+                            status: resp.statusCode
+                        });
+                    }
+
+                    return;
+                }
+
+                done(null, JSON.parse(body));
+            }
+        )
+    },
     auth: function(token, req, done) {
         if (typeof req === 'function') {
             done = req;
@@ -20,8 +65,6 @@ gitlab.prototype = {
                 }
 
                 if (resp.statusCode !== 200) {
-                    console.log(err, resp.statusCode, body);
-
                     if (req) {
                         req.res.status(resp.statusCode);
                     }
@@ -101,6 +144,30 @@ gitlab.prototype = {
         this.http(
             {
                 method: 'PUT',
+                uri: this.url(token, url, params),
+                body: JSON.stringify(body),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            },
+            function(err, resp, body) {
+                try {
+                    body = JSON.parse(body);
+                } catch (e) {}
+
+                callback(err, resp, body);
+            }
+        );
+    },
+    post: function(token, url, body, params, callback) {
+        if (typeof params === "function") {
+            callback = params;
+            params = [];
+        }
+
+        this.http(
+            {
+                method: 'POST',
                 uri: this.url(token, url, params),
                 body: JSON.stringify(body),
                 headers: {

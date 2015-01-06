@@ -1,7 +1,7 @@
 {
-    "gitlab_url": "<%= gitlabUrl %>",
-    "data_dir": "<%= dataDir %>",
-    "port": <%= serverPort %>,
+    "gitlab_url": "<%= @gitlab_url %>",
+    "data_dir": "<%= @data_dir %>",
+    "port": <%= @port %>,
     "column_prefix": "column:",
     "theme_prefix": "theme:",
     "mysql": {
@@ -9,5 +9,9 @@
         "user": "example",
         "password": "p@s$word",
         "database": "laboard"
+    },
+    "redis": {
+        "host": "localhost",
+        "port": 6379
     }
 }

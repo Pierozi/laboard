@@ -2,7 +2,20 @@ var _ = require('lodash'),
     fs = require('fs');
 
 module.exports = function(router, container) {
-    var config = container.get('config');
+    var config = container.get('config'),
+        callback = function(req, res, callback) {
+            return function (err, resp, body) {
+                if (err) {
+                    return res.error(err);
+                }
+
+                if (resp.statusCode !== 200) {
+                    return res.error(body, resp.statusCode);
+                }
+
+                return callback(body);
+            };
+        };
 
     router.authenticated.get('/projects/:ns/:name/columns',
         function (req, res) {
@@ -13,7 +26,43 @@ module.exports = function(router, container) {
                 columns = JSON.parse(fs.readFileSync(file));
             }
 
-            res.response.ok(_.values(columns));
+            container.get('gitlab.labels').all(
+                req.user.private_token,
+                req.params.ns,
+                req.params.name,
+                function(err, resp, labels) {
+                    columns = _.values(columns).map(function(column) {
+                        var label;
+
+                        if (labels) {
+                            label = _.find(labels, { name: config.column_prefix + column.title.toLowerCase() });
+                        }
+
+                        if (!label) {
+                            label = {
+                                name: config.column_prefix + column.title.toLowerCase(),
+                                color: '#E5E5E5'
+                            };
+
+                            container.get('gitlab.labels').persist(
+                                req.user.private_token,
+                                req.params.ns,
+                                req.params.name,
+                                    label,
+                                    function(req, res, label) {
+                                        column.color = label.color;
+                                    }
+                                );
+                        } else {
+                            column.color = label.color;
+                        }
+
+                        return column;
+                    });
+
+                    res.response.ok(_.values(columns));
+                }
+            );
         }
     );
 
@@ -22,34 +71,76 @@ module.exports = function(router, container) {
         function(req, res) {
             var file = config.data_dir + '/' + req.params.ns + '_' + req.params.name + '.json',
                 column = req.body,
-                columns = {};
+                columns = {},
+                createColumn = function(label) {
+                    if (fs.existsSync(file)) {
+                        columns = JSON.parse(fs.readFileSync(file));
+                    }
 
-            if (fs.existsSync(file)) {
-                columns = JSON.parse(fs.readFileSync(file));
-            }
+                    columns[column.title] = {
+                        title: column.title,
+                        closable: !!column.closable,
+                        canGoBackward: !!column.canGoBackward,
+                        position: column.position || 0,
+                        limit: column.limit ? (column.limit < 0 ? 0 : parseInt(column.limit, 10)) : 0
+                    };
 
-            if (!columns[column.title]) {
-                columns[column.title] = {
-                    title: column.title,
-                    closable: !!column.closable,
-                    canGoBackward: !!column.canGoBackward,
-                    position: column.position || 0,
-                    theme: column.theme || 'default',
-                    limit: column.limit ? (column.limit < 0 ? 0 : column.limit) : 0
+                    fs.writeFileSync(file, JSON.stringify(columns));
+
+                    columns[column.title].color = label.color;
+
+                    container.get('server.websocket').broadcast(
+                        'column.new',
+                        {
+                            namespace: req.params.ns,
+                            project: req.params.name,
+                            column: columns[column.title]
+                        }
+                    );
+
+                    res.response.created(columns[column.title]);
                 };
 
-                fs.writeFileSync(file, JSON.stringify(columns));
+            if (!columns[column.title]) {
+                container.get('gitlab.labels').all(
+                    req.user.private_token,
+                    req.params.ns,
+                    req.params.name,
+                    function(err, resp, labels) {
+                        var label;
 
-                container.get('server.websocket').broadcast(
-                    'column.new',
-                    {
-                        namespace: req.params.ns,
-                        project: req.params.name,
-                        column: columns[column.title]
+                        if (!column.title) {
+                            res.error({
+                                message: 'Conflict'
+                            }, 400);
+
+                            return;
+                        }
+
+                        if (labels) {
+                            label = _.find(labels, { name: config.column_prefix + column.title.toLowerCase() });
+                        }
+
+                        if (!label) {
+                            label = {
+                                name: config.column_prefix + column.title.toLowerCase(),
+                                color: '#E5E5E5'
+                            };
+
+                            container.get('gitlab.labels').persist(
+                                req.user.private_token,
+                                req.params.ns,
+                                req.params.name,
+                                label,
+                                function(req, res, label) {
+                                    createColumn(label);
+                                }
+                            );
+                        } else {
+                            createColumn(label);
+                        }
                     }
                 );
-
-                res.response.created(column);
             } else {
                 res.error.conflict({
                     message: 'Conflict'
@@ -70,11 +161,10 @@ module.exports = function(router, container) {
             }
 
             if (columns[req.params.column]) {
-                if (typeof column.theme !== "undefined") { columns[req.params.column].theme = column.theme; }
                 if (typeof column.position !== "undefined") { columns[req.params.column].position = column.position; }
                 if (typeof column.closable !== "undefined") { columns[req.params.column].closable = column.closable; }
                 if (typeof column.canGoBackward !== "undefined") { columns[req.params.column].canGoBackward = column.canGoBackward; }
-                if (typeof column.limit !== "undefined") { columns[req.params.column].limit = column.limit < 0 ? 0 : column.limit; }
+                if (typeof column.limit !== "undefined") { columns[req.params.column].limit = column.limit ? (column.limit < 0 ? 0 : parseInt(column.limit, 10)) : 0; }
 
                 fs.writeFileSync(file, JSON.stringify(columns));
 
@@ -112,6 +202,8 @@ module.exports = function(router, container) {
                 columns[req.params.column].position = to;
 
                 fs.writeFileSync(file, JSON.stringify(columns));
+
+                columns[req.params.column].color = req.body.color;
 
                 container.get('server.websocket').broadcast(
                     'column.move',
